@@ -10,7 +10,7 @@ To run the tests:
 
     jest -i
 
-### Function `sqlForPartialUpdate` explanation
+## Function `sqlForPartialUpdate` explanation
 
 This function helps to generate SQL queries for partial updates in a database.
 The function **`sqlForPartialUpdate`** takes two arguments: **`dataToUpdate`** (an `object` containing the data to be updated) and **`jsToSql`** (an `object` that maps **JavaScript** property names to the corresponding **SQL column names**).
