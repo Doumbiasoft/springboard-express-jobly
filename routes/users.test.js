@@ -12,6 +12,7 @@ const {
   commonAfterEach,
   commonAfterAll,
   u1Token,
+  u1TokenAdmin,
 } = require("./_testCommon");
 
 beforeAll(commonBeforeAll);
@@ -21,10 +22,10 @@ afterAll(commonAfterAll);
 
 /************************************** POST /users */
 
-describe("POST /users", function () {
-  test("works for users: create non-admin", async function () {
+describe("POST /users/register", function () {
+  test("works for any one want to register: create user", async function () {
     const resp = await request(app)
-        .post("/users")
+        .post("/users/register")
         .send({
           username: "u-new",
           firstName: "First-new",
@@ -33,7 +34,6 @@ describe("POST /users", function () {
           email: "new@email.com",
           isAdmin: false,
         })
-        .set("authorization", `Bearer ${u1Token}`);
     expect(resp.statusCode).toEqual(201);
     expect(resp.body).toEqual({
       user: {
@@ -46,7 +46,7 @@ describe("POST /users", function () {
     });
   });
 
-  test("works for users: create admin", async function () {
+  test("works for user admin: create user who is admin or not", async function () {
     const resp = await request(app)
         .post("/users")
         .send({
@@ -57,7 +57,7 @@ describe("POST /users", function () {
           email: "new@email.com",
           isAdmin: true,
         })
-        .set("authorization", `Bearer ${u1Token}`);
+        .set("authorization", `Bearer ${u1TokenAdmin}`);
     expect(resp.statusCode).toEqual(201);
     expect(resp.body).toEqual({
       user: {
@@ -70,6 +70,28 @@ describe("POST /users", function () {
     });
   });
 
+  test("fail for users non admin to: create admin", async function () {
+    const resp = await request(app)
+        .post("/users")
+        .send({
+          username: "u-new",
+          firstName: "First-new",
+          lastName: "Last-newL",
+          password: "password-new",
+          email: "new@email.com",
+          isAdmin: true,
+        })
+        .set("authorization", `Bearer ${u1Token}`);
+        expect(resp.statusCode).toEqual(401);
+        expect(resp.body).toEqual({
+          error: {
+            message: "Unauthorized",
+            status: 401
+        },
+        });
+  });
+
+
   test("unauth for anon", async function () {
     const resp = await request(app)
         .post("/users")
@@ -80,7 +102,8 @@ describe("POST /users", function () {
           password: "password-new",
           email: "new@email.com",
           isAdmin: true,
-        });
+        })
+        .set("authorization", `Bearer ${u1Token}`);
     expect(resp.statusCode).toEqual(401);
   });
 
@@ -90,7 +113,7 @@ describe("POST /users", function () {
         .send({
           username: "u-new",
         })
-        .set("authorization", `Bearer ${u1Token}`);
+        .set("authorization", `Bearer ${u1TokenAdmin}`);
     expect(resp.statusCode).toEqual(400);
   });
 
@@ -105,7 +128,7 @@ describe("POST /users", function () {
           email: "not-an-email",
           isAdmin: true,
         })
-        .set("authorization", `Bearer ${u1Token}`);
+        .set("authorization", `Bearer ${u1TokenAdmin}`);
     expect(resp.statusCode).toEqual(400);
   });
 });
@@ -113,10 +136,10 @@ describe("POST /users", function () {
 /************************************** GET /users */
 
 describe("GET /users", function () {
-  test("works for users", async function () {
+  test("works for users admin", async function () {
     const resp = await request(app)
         .get("/users")
-        .set("authorization", `Bearer ${u1Token}`);
+        .set("authorization", `Bearer ${u1TokenAdmin}`);
     expect(resp.body).toEqual({
       users: [
         {
@@ -146,8 +169,15 @@ describe("GET /users", function () {
 
   test("unauth for anon", async function () {
     const resp = await request(app)
-        .get("/users");
+        .get("/users")
+        .set("authorization", `Bearer ${u1Token}`);
     expect(resp.statusCode).toEqual(401);
+    expect(resp.body).toEqual({
+      error: {
+        message: "Unauthorized",
+        status: 401
+    },
+    });
   });
 
   test("fails: test next() handler", async function () {
@@ -157,7 +187,7 @@ describe("GET /users", function () {
     await db.query("DROP TABLE users CASCADE");
     const resp = await request(app)
         .get("/users")
-        .set("authorization", `Bearer ${u1Token}`);
+        .set("authorization", `Bearer ${u1TokenAdmin}`);
     expect(resp.statusCode).toEqual(500);
   });
 });
@@ -176,6 +206,7 @@ describe("GET /users/:username", function () {
         lastName: "U1L",
         email: "user1@user.com",
         isAdmin: false,
+        jobs: [],
       },
     });
   });
@@ -185,11 +216,17 @@ describe("GET /users/:username", function () {
         .get(`/users/u1`);
     expect(resp.statusCode).toEqual(401);
   });
+  test("works for user and admin", async function () {
+    const resp = await request(app)
+        .get(`/users/u1`)
+        .set("authorization", `Bearer ${u1TokenAdmin}`);
+    expect(resp.statusCode).toEqual(200);
+  });
 
   test("not found if user not found", async function () {
     const resp = await request(app)
         .get(`/users/nope`)
-        .set("authorization", `Bearer ${u1Token}`);
+        .set("authorization", `Bearer ${u1TokenAdmin}`);
     expect(resp.statusCode).toEqual(404);
   });
 });
@@ -230,7 +267,7 @@ describe("PATCH /users/:username", () => {
         .send({
           firstName: "Nope",
         })
-        .set("authorization", `Bearer ${u1Token}`);
+        .set("authorization", `Bearer ${u1TokenAdmin}`);
     expect(resp.statusCode).toEqual(404);
   });
 
@@ -250,7 +287,7 @@ describe("PATCH /users/:username", () => {
         .send({
           password: "new-password",
         })
-        .set("authorization", `Bearer ${u1Token}`);
+        .set("authorization", `Bearer ${u1TokenAdmin}`);
     expect(resp.body).toEqual({
       user: {
         username: "u1",
@@ -271,7 +308,7 @@ describe("DELETE /users/:username", function () {
   test("works for users", async function () {
     const resp = await request(app)
         .delete(`/users/u1`)
-        .set("authorization", `Bearer ${u1Token}`);
+        .set("authorization", `Bearer ${u1TokenAdmin}`);
     expect(resp.body).toEqual({ deleted: "u1" });
   });
 
@@ -284,7 +321,22 @@ describe("DELETE /users/:username", function () {
   test("not found if user missing", async function () {
     const resp = await request(app)
         .delete(`/users/nope`)
-        .set("authorization", `Bearer ${u1Token}`);
+        .set("authorization", `Bearer ${u1TokenAdmin}`);
     expect(resp.statusCode).toEqual(404);
+  });
+});
+
+
+/************************************** POST /users/:username/jobs/:id */
+
+describe("POST /users/:username/jobs/:id", function () {
+  test("Applying for a job", async function () {
+    const username = "u1";
+    const jobId = "1";
+    const resp = await request(app)
+        .post(`/users/${username}/jobs/${jobId}`)
+        .set("authorization", `Bearer ${u1TokenAdmin}`);
+        expect(resp.statusCode).toEqual(200);
+        expect(resp.body).toEqual({applied:jobId});
   });
 });

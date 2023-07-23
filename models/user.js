@@ -124,7 +124,7 @@ class User {
    **/
 
   static async get(username) {
-    const userRes = await db.query(
+    const userRes =  db.query(
           `SELECT username,
                   first_name AS "firstName",
                   last_name AS "lastName",
@@ -135,9 +135,25 @@ class User {
         [username],
     );
 
-    const user = userRes.rows[0];
+    const jobRes =  db.query(
+      `SELECT job_id
+       FROM applications
+       WHERE username = $1 GROUP BY username, job_id`,
+    [username]);
 
-    if (!user) throw new NotFoundError(`No user: ${username}`);
+    let promises = await Promise.all([userRes,jobRes]);
+
+    if(promises[0].rows.length === 0){
+        throw new NotFoundError('No user',404);
+    }
+    const user = {
+      username: promises[0].rows[0].username,
+      firstName: promises[0].rows[0].firstName,
+      lastName: promises[0].rows[0].lastName,
+      email: promises[0].rows[0].email,
+      isAdmin: promises[0].rows[0].isAdmin,
+      jobs: promises[1].rows
+    }
 
     return user;
   }
@@ -203,6 +219,27 @@ class User {
     const user = result.rows[0];
 
     if (!user) throw new NotFoundError(`No user: ${username}`);
+  }
+
+  static async apply(username, jobId) {
+
+        const result = await db.query(
+          `INSERT INTO applications
+            (username,job_id)
+            VALUES ($1, $2)
+            RETURNING username ,job_id`,
+          [
+            username,
+            jobId
+          ],
+       );
+
+    const applied = result.rows[0];
+
+    if (!applied) throw new NotFoundError(`No user: ${username} or job with id: ${jobId}`);
+
+    return jobId;
+
   }
 }
 

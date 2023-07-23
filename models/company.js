@@ -61,6 +61,71 @@ class Company {
     return companiesRes.rows;
   }
 
+    /** Find companies by { minEmployees, maxEmployees, name } if provided otherwise get all companies.
+   *
+   * Returns [{ handle, name, description, numEmployees, logoUrl }, ...]
+   * */
+
+    static async findBy({ minEmployees, maxEmployees, name }) {
+
+      const paramsValue =[];
+      let filter = "";
+      let current_number = 0;
+      let query = `SELECT handle, name, description, num_employees AS "numEmployees",logo_url AS "logoUrl" FROM companies `;
+
+      if(minEmployees && maxEmployees){
+        if(minEmployees > maxEmployees){
+          throw new BadRequestError(`minEmployees "${minEmployees}" value should be lower than maxEmployees "${maxEmployees}" value`);
+        }
+      }
+      if(minEmployees){
+        if (filter.trim() !== ""){
+          filter += `AND `;
+        }
+        current_number++;
+        filter += `num_employees >=$${current_number} `;
+        paramsValue.push(minEmployees);
+      }
+      if(maxEmployees){
+        if (filter.trim() !== ""){
+          filter += `AND `;
+        }
+        current_number++;
+        filter += `num_employees <=$${current_number} `;
+        paramsValue.push(maxEmployees);
+      }
+      //----------------------where-------------------------------
+      if (filter.trim() !== "")
+        {
+          if(name){
+            current_number++;
+            query += `WHERE name
+            ILIKE '' || $${current_number} || '%'
+            OR name ILIKE '%' || $${current_number} || ''
+            OR name ILIKE '%' || $${current_number} || '%'
+            AND ` + filter;
+            paramsValue.push(name);
+
+          }else{
+            query += `WHERE ` + filter;
+          }
+        }
+        else
+        {
+          if(name){
+            current_number++;
+            query += `WHERE name
+            ILIKE '' || $${current_number} || '%'
+            OR name ILIKE '%' || $${current_number} || ''
+            OR name ILIKE '%' || $${current_number} || '%' `;
+            paramsValue.push(name);
+          }
+        }
+      //------------------------end where-------------------------------
+      const companiesRes = await db.query(query, [...paramsValue]);
+      return companiesRes.rows;
+    }
+
   /** Given a company handle, return data about company.
    *
    * Returns { handle, name, description, numEmployees, logoUrl, jobs }
@@ -70,7 +135,7 @@ class Company {
    **/
 
   static async get(handle) {
-    const companyRes = await db.query(
+    const companyRes =  db.query(
           `SELECT handle,
                   name,
                   description,
@@ -80,7 +145,32 @@ class Company {
            WHERE handle = $1`,
         [handle]);
 
-    const company = companyRes.rows[0];
+        const jobRes =  db.query(
+          `SELECT id,
+                  title,
+                  salary,
+                  equity,
+                  company_handle AS "companyHandle"
+           FROM jobs
+           WHERE company_handle = $1`,
+        [handle]);
+
+        let promises = await Promise.all([companyRes,jobRes]);
+
+        if(promises[0].rows.length === 0){
+            throw new NotFoundError('No company',404);
+        }
+
+
+    //const company = companyRes.rows[0];
+    const company = {
+        handle:  promises[0].rows[0].handle,
+        name: promises[0].rows[0].name,
+        description: promises[0].rows[0].description,
+        numEmployees: promises[0].rows[0].numEmployees,
+        logoUrl: promises[0].rows[0].logoUrl,
+        jobs : promises[1].rows
+  };
 
     if (!company) throw new NotFoundError(`No company: ${handle}`);
 

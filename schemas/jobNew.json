@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "$id": "http://example.com/example.json",
+  "type": "object",
+  "required": [
+      "title",
+      "salary",
+      "equity",
+      "companyHandle"
+  ],
+  "properties": {
+      "title": {
+          "type": "string"
+      },
+      "salary": {
+          "type": "integer"
+      },
+      "equity": {
+          "type": "string"
+      },
+      "companyHandle": {
+          "type": "string"
+      }
+  }
+}
