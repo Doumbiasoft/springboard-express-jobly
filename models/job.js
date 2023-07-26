@@ -85,7 +85,7 @@ class Job {
         filter += `salary >=$${current_number} `;
         paramsValue.push(minSalary);
       }
-      if(hasEquity === "true"){
+      if(hasEquity === "true" || hasEquity === true ){
         if (filter.trim() !== ""){
           filter += `AND `;
         }
